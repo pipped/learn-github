@@ -10,3 +10,5 @@ Each topic walks you through doing it yourself, not just reading about it.
 3. [How GitHub Actions Works](03-github-actions.md)
 4. [How ESLint Works](04-eslint.md)
 5. [How npm audit Works](05-npm-audit.md)
+6. [GitHub Basics](06-github-basics.md)
+7. [How Vite Works](07-how-vite-works.md)
