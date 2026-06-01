@@ -1,14 +1,24 @@
-# npm audit
+# How npm audit Works
 
-## What it is
+When you install packages, those packages have their own dependencies — and any of them could have known security vulnerabilities. `npm audit` finds them.
 
-`npm audit` scans your project's dependencies for known security vulnerabilities. It checks every package in `node_modules` against a public database of reported issues.
+---
+
+## Step 1 — Run your first audit
+
+Inside any Node.js project:
 
 ```bash
 npm audit
 ```
 
-## What the output means
+If everything is fine:
+
+```
+found 0 vulnerabilities
+```
+
+If there are issues:
 
 ```
 axios  1.0.0 - 1.15.2
@@ -17,45 +27,75 @@ axios Vulnerable to prototype pollution
 fix available via `npm audit fix`
 ```
 
-- **Severity** — low, moderate, high, or critical
-- **Affected versions** — the range of versions that have the issue
-- **Fix available** — whether updating the package resolves it
+---
 
-## Fixing vulnerabilities
+## Step 2 — Understand the output
+
+Each vulnerability shows:
+
+- **Package name** — which package has the issue
+- **Affected versions** — the range of versions that are vulnerable
+- **Severity** — low, moderate, high, or critical
+- **Fix available** — whether updating it will solve it
+
+The vulnerability might not be in a package you installed directly. It could be buried several layers deep:
+
+```
+your app
+  └── axios          ← you installed this
+        └── follow-redirects  ← this one is vulnerable
+```
+
+`npm audit` catches all of them.
+
+---
+
+## Step 3 — Fix the vulnerabilities
 
 ```bash
 npm audit fix
 ```
 
-This automatically updates packages to the nearest safe version that doesn't break anything.
+This automatically updates packages to the nearest safe version without breaking anything. Run `npm audit` again after to confirm they're gone.
 
-```bash
-npm audit fix --force
+---
+
+## Step 4 — When npm audit fix isn't enough
+
+Sometimes a fix requires a major version bump (breaking change):
+
+```
+fix available via `npm audit fix --force`
+Will install vite@8.0.15, which is a breaking change
 ```
 
-This allows breaking changes (major version bumps). Use carefully — it may require code changes to work with the new version.
+`--force` allows the major version jump. Be careful — the new version may have changes that break your code.
 
-## Audit levels
-
-You can tell `npm audit` to only fail on certain severities:
+If the breaking change isn't worth it right now, you can tell CI to only fail on serious issues:
 
 ```bash
 npm audit --audit-level=high
 ```
 
-This passes even if there are moderate vulnerabilities. Useful in CI when a moderate issue has no fix available (like the esbuild/vite issue in ai-transcribe that would require a breaking Vite upgrade to resolve).
+This passes even if moderate vulnerabilities exist. Only high or critical issues will fail the build.
 
-## Transitive dependencies
+---
 
-Most vulnerabilities aren't in packages you installed directly — they're in packages that your packages depend on. For example:
+## Step 5 — Add it to CI
 
+In your GitHub Actions workflow:
+
+```yml
+- run: npm audit --audit-level=high
 ```
-axios → follow-redirects (vulnerable)
-express → qs (vulnerable)
-```
 
-`npm audit fix` handles these too, updating the nested dependency to a safe version.
+Now every push is automatically scanned. If a package you depend on gets a new security issue reported, your next push will catch it.
 
-## In CI
+---
 
-Running `npm audit` in GitHub Actions means every push is checked for new vulnerabilities. If a package you depend on gets a new CVE reported, your next push will catch it automatically.
+## Key things to remember
+
+- Vulnerabilities are usually in dependencies of your dependencies, not packages you installed directly
+- `npm audit fix` handles most issues automatically
+- `--force` is for breaking changes — check what changed before using it
+- `--audit-level=high` lets you skip moderate issues that have no safe fix yet

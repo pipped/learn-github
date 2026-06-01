@@ -1,63 +1,133 @@
-# GitHub Actions
+# How GitHub Actions Works
 
-## What it is
+GitHub Actions automatically runs tasks — like checking for errors or building your app — every time you push code. You set it up once and it runs forever.
 
-GitHub Actions is a CI (continuous integration) system built into GitHub. It automatically runs tasks — like tests, linting, or builds — whenever you push code.
+---
 
-## How it works
+## Step 1 — Understand what it does
 
-GitHub watches your repo for `.yml` files inside `.github/workflows/`. When you push a commit, GitHub reads those files and executes whatever steps are defined.
+Every time you push to GitHub, Actions can automatically:
+- Check your code for errors (lint)
+- Try to build your app
+- Run tests
+- Scan for security issues
 
+If any step fails, GitHub marks the push with a red X so you know something broke.
+
+---
+
+## Step 2 — Create the workflow folder
+
+GitHub looks for workflow files in one specific place:
+
+```bash
+mkdir -p .github/workflows
 ```
-You push a commit
-      ↓
-GitHub detects .github/workflows/ci.yml
-      ↓
-GitHub spins up a fresh virtual machine on their servers
-      ↓
-That VM clones your repo
-      ↓
-Runs each step (npm install, lint, build, etc.)
-      ↓
-Reports pass or fail
-      ↓
-VM is destroyed
-```
 
-You don't manage any servers. The runner is GitHub's infrastructure.
+The folder name and location are the convention GitHub watches for. Change either one and GitHub won't find it.
 
-## The yml file
+---
+
+## Step 3 — Create your first workflow file
+
+Create `.github/workflows/ci.yml`:
 
 ```yml
 name: CI
 
 on:
   push:
-    branches: [main]      # run when you push to main
-  pull_request:
-    branches: [main]      # run when a PR targets main
+    branches: [main]
 
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install
+      - run: npm run build
+```
+
+Break it down:
+- `name` — what shows up in the GitHub Actions tab
+- `on` — when to run it (on every push to main)
+- `jobs` — the work to do
+- `runs-on` — GitHub spins up a fresh Ubuntu virtual machine for each run
+- `uses` — reusable actions published by GitHub (checkout clones your repo, setup-node installs Node)
+- `run` — shell commands to execute
+
+---
+
+## Step 4 — Push it and watch it run
+
+```bash
+git add .github/workflows/ci.yml
+git commit -m "Add CI workflow"
+git push
+```
+
+Go to your repo on GitHub → click the **Actions** tab. You'll see the workflow running in real time.
+
+---
+
+## Step 5 — Read the results
+
+Each step shows a green checkmark or red X:
+
+```
+✓ actions/checkout@v4
+✓ actions/setup-node@v4
+✓ npm install
+✗ npm run build   ← something broke here
+```
+
+Click any step to see the full log output — the exact error message is in there.
+
+---
+
+## Step 6 — Add multiple jobs
+
+Jobs run in parallel by default:
+
+```yml
 jobs:
   frontend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
-      - uses: actions/checkout@v4     # clones your repo onto the VM
-      - uses: actions/setup-node@v4   # installs Node.js
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: npm ci                   # install dependencies
-      - run: npm run lint             # run lint
-      - run: npm run build            # run build
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
 ```
 
-## Reusable actions
+`defaults.run.working-directory` sets which folder the commands run in.
 
-Lines like `actions/checkout@v4` are pre-built actions published by GitHub at github.com/actions/checkout. The `@v4` pins to a specific version so your workflow doesn't break if the action updates.
+---
 
-## Free tier
+## Key things to remember
 
-Public repos get unlimited minutes. Private repos get 2,000 free minutes per month. Each run on this project takes under 2 minutes, so you'd never come close to the limit.
-
-## Viewing results
-
-Go to your repo on GitHub → Actions tab. Every run shows which steps passed or failed and the full log output.
+- Drop a `.yml` file in `.github/workflows/` and GitHub picks it up automatically — nothing to configure
+- Each job gets a fresh virtual machine — nothing carries over between runs
+- `npm ci` is preferred over `npm install` in CI because it installs exactly what's in the lock file
+- The Actions tab on your repo shows every run and its full logs

@@ -1,39 +1,109 @@
-# .gitignore
+# How .gitignore Works
 
-## What it does
+Some files should never be committed — passwords, secrets, or huge folders that anyone can regenerate. `.gitignore` tells git to skip them entirely.
 
-`.gitignore` is a file that tells git to ignore certain files or folders. Anything matching a pattern in `.gitignore` is invisible to git — it won't show up in `git status`, and `git add` won't pick it up.
+---
 
-The files still exist on your disk. Git just pretends they aren't there.
+## Step 1 — See the problem without .gitignore
 
-## Common patterns
+```bash
+mkdir my-project
+cd my-project
+git init
+mkdir node_modules
+echo "secret" > .env
+git status
+```
+
+You'll see git wants to track everything:
+
+```
+Untracked files:
+  .env
+  node_modules/
+```
+
+You don't want either of these committed. `.env` has secrets. `node_modules` has thousands of files anyone can regenerate with `npm install`.
+
+---
+
+## Step 2 — Create a .gitignore file
+
+```bash
+echo "node_modules/" > .gitignore
+echo ".env" >> .gitignore
+```
+
+Now run:
+
+```bash
+git status
+```
+
+You'll see:
+
+```
+Untracked files:
+  .gitignore
+```
+
+`node_modules/` and `.env` are gone from the list. Git is pretending they don't exist. The files are still on your disk — git just ignores them.
+
+---
+
+## Step 3 — Understand the patterns
+
+Open `.gitignore` and add more patterns:
 
 ```
 node_modules/    # ignore an entire folder
-.env             # ignore a specific file (usually contains secrets)
+.env             # ignore a specific file
 *.log            # ignore any file ending in .log
 dist/            # ignore build output
-.claude/         # ignore a folder with local notes
+.claude/         # ignore a local notes folder
 ```
 
-## Why it matters
+The `#` symbol is a comment — git ignores that line.
 
-Some files should never be committed:
-- `node_modules/` — hundreds of MB of dependencies, anyone can regenerate them with `npm install`
-- `.env` — contains passwords and API keys, committing these is a security risk
-- `dist/` — compiled build output, generated from source code
+---
 
-## Important rule
+## Step 4 — Commit the .gitignore itself
 
-`.gitignore` only works on files git has never tracked. If you commit a file first and then add it to `.gitignore`, git will keep tracking it.
-
-To stop tracking a file that was already committed:
 ```bash
-git rm --cached <filename>
+git add .gitignore
+git commit -m "Add .gitignore"
 ```
 
-This removes it from git's tracking without deleting it from your disk. Then commit the change.
+The `.gitignore` file gets committed so everyone working on the project uses the same rules.
 
-## Order of operations
+---
 
-Always add a file to `.gitignore` before you commit it. That's the safe order.
+## Step 5 — The important rule: order of operations
+
+`.gitignore` only works on files git has never tracked before.
+
+If you accidentally commit a file first:
+
+```bash
+git add .env
+git commit -m "oops"
+```
+
+Adding `.env` to `.gitignore` afterwards won't help — git is already tracking it.
+
+To fix it, you need to tell git to stop tracking it without deleting it:
+
+```bash
+git rm --cached .env
+git commit -m "Remove .env from tracking"
+```
+
+Now add `.env` to `.gitignore` and commit that too.
+
+---
+
+## Key things to remember
+
+- Files in `.gitignore` still exist on your disk — git just can't see them
+- Always add a file to `.gitignore` before you commit it
+- If you already committed it, use `git rm --cached` to untrack it
